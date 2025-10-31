@@ -1,25 +1,20 @@
-# Use Eclipse Temurin JDK for Java 21
-FROM eclipse-temurin:21-jdk
-
-# Set work directory inside container
+# Use Maven with JDK 21 to build the application
+FROM maven:3.9.6-eclipse-temurin-21 AS build
 WORKDIR /app
 
-# Copy Maven files first (for caching)
-COPY pom.xml .
-COPY mvnw .
-COPY .mvn .mvn
+# Copy the entire project
+COPY . .
 
-# Install dependencies
-RUN ./mvnw dependency:go-offline
+# Build the JAR file
+RUN mvn clean package -DskipTests
 
-# Copy project source code
-COPY src src
+# Use lightweight JDK to run the app
+FROM eclipse-temurin:21-jdk
+WORKDIR /app
 
-# Build project
-RUN ./mvnw clean package -DskipTests
+# Copy built JAR from builder stage
+COPY --from=build /app/target/*.jar app.jar
 
-# Expose backend port
 EXPOSE 8080
 
-# Run jar
-ENTRYPOINT ["java", "-jar", "target/Course-Registration-System-0.0.1-SNAPSHOT.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
